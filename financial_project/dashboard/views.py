@@ -1,3 +1,4 @@
+from django.db.models import Q
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required
 from django.contrib.admin.views.decorators import staff_member_required
@@ -99,53 +100,83 @@ def admin_dashboard(request):
 
 @login_required
 def api_chart_data(request):
-    user = request.user
-    date_filter = request.GET.get('date_filter', 'month')
-    today = timezone.now().date()
-    
-    if date_filter == 'week':
-        start_date = today - timedelta(days=7)
-    elif date_filter == 'month':
-        start_date = today.replace(day=1)
-    elif date_filter == 'year':
-        start_date = today.replace(month=1, day=1)
-    else:
-        start_date = today - timedelta(days=30)
-    
-    # Dados para gráfico de categorias
-    categories_data = FinancialData.objects.filter(
-        user=user, 
-        date__gte=start_date
-    ).values('category').annotate(total=Sum('amount'))
-    
-    categories = []
-    amounts = []
-    
-    for item in categories_data:
-        categories.append(dict(FinancialData.CATEGORY_CHOICES)[item['category']])
-        amounts.append(float(item['total']))
-    
-    # Dados para gráfico de timeline
-    timeline_data = FinancialData.objects.filter(
-        user=user, 
-        date__gte=start_date
-    ).extra({'date_formatted': "TO_CHAR(date, 'YYYY-MM-DD')"}).values('date_formatted').annotate(
-        receita=Sum('amount', filter=models.Q(category='receita')),
-        despesa=Sum('amount', filter=models.Q(category='despesa'))
-    ).order_by('date_formatted')
-    
-    dates = [item['date_formatted'] for item in timeline_data]
-    receitas = [float(item['receita'] or 0) for item in timeline_data]
-    despesas = [float(item['despesa'] or 0) for item in timeline_data]
-    
-    return JsonResponse({
-        'categories': {
-            'labels': categories,
-            'data': amounts
-        },
-        'timeline': {
-            'labels': dates,
-            'receitas': receitas,
-            'despesas': despesas
+    try:
+        user = request.user
+        date_filter = request.GET.get('date_filter', 'month')
+        today = timezone.now().date()
+        
+        if date_filter == 'week':
+            start_date = today - timedelta(days=7)
+        elif date_filter == 'month':
+            start_date = today.replace(day=1)
+        elif date_filter == 'year':
+            start_date = today.replace(month=1, day=1)
+        else:
+            start_date = today - timedelta(days=30)
+        
+        print(f"📊 API chamada - Usuário: {user}, Filtro: {date_filter}, Data início: {start_date}")
+        
+        # Dados para gráfico de categorias
+        categories_data = FinancialData.objects.filter(
+            user=user, 
+            date__gte=start_date
+        ).values('category').annotate(total=Sum('amount'))
+        
+        categories = []
+        amounts = []
+        
+        # Garantir que todas as categorias apareçam, mesmo com valor zero
+        category_choices = dict(FinancialData.CATEGORY_CHOICES)
+        for category_key, category_name in category_choices.items():
+            categories.append(category_name)
+            # Encontrar o total para esta categoria
+            category_total = next((item['total'] for item in categories_data if item['category'] == category_key), 0)
+            amounts.append(float(category_total or 0))
+        
+        print(f"📈 Dados categorias: {categories} - {amounts}")
+        
+        # Dados para gráfico de timeline - Versão corrigida
+        timeline_data = FinancialData.objects.filter(
+            user=user,
+            date__gte=start_date
+        ).values('date').annotate(
+            receita=Sum('amount', filter=Q(category='receita')),
+            despesa=Sum('amount', filter=Q(category='despesa'))
+        ).order_by('date')
+        
+        dates = []
+        receitas = []
+        despesas = []
+        
+        for item in timeline_data:
+            dates.append(item['date'].strftime('%Y-%m-%d'))
+            receitas.append(float(item['receita'] or 0))
+            despesas.append(float(item['despesa'] or 0))
+        
+        print(f"📅 Dados timeline: {len(dates)} datas")
+        
+        response_data = {
+            'categories': {
+                'labels': categories,
+                'data': amounts
+            },
+            'timeline': {
+                'labels': dates,
+                'receitas': receitas,
+                'despesas': despesas
+            }
         }
-    })
+        
+        return JsonResponse(response_data)
+    
+    except Exception as e:
+        import traceback
+        error_details = traceback.format_exc()
+        print(f"❌ Erro na API: {str(e)}")
+        print(f"📋 Detalhes: {error_details}")
+        
+        return JsonResponse({
+            'error': str(e),
+            'categories': {'labels': [], 'data': []},
+            'timeline': {'labels': [], 'receitas': [], 'despesas': []}
+        }, status=500)

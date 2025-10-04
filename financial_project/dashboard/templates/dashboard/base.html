@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="pt-br">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -8,30 +9,36 @@
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <link href="/static/css/dashboard.css" rel="stylesheet">
 </head>
+
 <body>
     <nav class="navbar navbar-expand-lg navbar-dark bg-primary">
         <div class="container">
             <a class="navbar-brand" href="{% url 'dashboard' %}">
                 <i class="fas fa-chart-line"></i> Financial Dashboard
             </a>
-            
+
             <div class="navbar-nav ms-auto">
                 {% if user.is_authenticated %}
-                    <span class="navbar-text me-3">
-                        Olá, {{ user.username }}
-                    </span>
-                    {% if user.is_staff %}
-                        <a class="nav-link" href="{% url 'admin_dashboard' %}">
-                            <i class="fas fa-cog"></i> Admin Dashboard
-                        </a>
-                    {% endif %}
-                    <a class="nav-link" href="{% url 'logout' %}">
-                        <i class="fas fa-sign-out-alt"></i> Sair
-                    </a>
+                <span class="navbar-text me-3">
+                    Olá, {{ user.username }}
+                </span>
+                {% if user.is_staff %}
+                <a class="nav-link" href="{% url 'admin_dashboard' %}">
+                    <i class="fas fa-cog"></i> Admin Dashboard
+                </a>
+                {% endif %}
+                <a class="nav-link" href="{% url 'logout' %}">
+                    <i class="fas fa-sign-out-alt"></i> Sair
+                </a>
                 {% else %}
-                    <a class="nav-link" href="{% url 'login' %}">
-                        <i class="fas fa-sign-in-alt"></i> Entrar
-                    </a>
+                <a class="nav-link" href="{% url 'login' %}">
+                    <i class="fas fa-sign-in-alt"></i> Entrar
+                </a>
+                {% endif %}
+                {% if user.is_staff %}
+                <a class="nav-link" href="{% url 'admin:index' %}" target="_blank" title="Administração do Django">
+                    <i class="fas fa-cogs"></i> Django Admin
+                </a>
                 {% endif %}
             </div>
         </div>
@@ -46,4 +53,5 @@
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     {% block scripts %}{% endblock %}
 </body>
+
 </html>
