@@ -1,12 +1,31 @@
 from django import forms
-from .models import FinancialData
 
 class FinancialDataForm(forms.ModelForm):
     class Meta:
         model = FinancialData
-        fields = ['category', 'description', 'amount', 'date']
-        widgets = {
-            'date': forms.DateInput(attrs={'type': 'date'}),
-            'description': forms.TextInput(attrs={'placeholder': 'Descrição da transação'}),
-            'amount': forms.NumberInput(attrs={'placeholder': '0.00', 'step': '0.01'}),
-        }
+        fields = '__all__'
+    
+    def clean_recurring_day(self):
+        day = self.cleaned_data.get('recurring_day')
+        if day and (day < 1 or day > 31):
+            raise forms.ValidationError("O dia recorrente deve estar entre 1 e 31.")
+        return day
+
+@admin.register(FinancialData)
+class FinancialDataAdmin(admin.ModelAdmin):
+    form = FinancialDataForm
+    list_display = ('user', 'category', 'description', 'amount', 'date', 'is_recurring', 'recurring_day')
+    list_filter = ('category', 'date', 'user', 'is_recurring')
+    search_fields = ('description', 'user__username')
+    date_hierarchy = 'date'
+    ordering = ('-date',)
+    
+    fieldsets = (
+        (None, {
+            'fields': ('user', 'category', 'description', 'amount', 'date')
+        }),
+        ('Configurações Recorrentes', {
+            'fields': ('is_recurring', 'recurring_day'),
+            'classes': ('collapse',),
+        }),
+    )

@@ -3,8 +3,8 @@ from .models import FinancialData, DashboardConfig
 
 @admin.register(FinancialData)
 class FinancialDataAdmin(admin.ModelAdmin):
-    list_display = ('user', 'category', 'description', 'amount', 'date')
-    list_filter = ('category', 'date', 'user')
+    list_display = ('user', 'category', 'description', 'amount', 'date', 'is_recurring', 'recurring_day')
+    list_filter = ('category', 'date', 'user', 'is_recurring')
     search_fields = ('description', 'user__username')
     date_hierarchy = 'date'
     ordering = ('-date',)

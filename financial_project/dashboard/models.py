@@ -17,11 +17,16 @@ class FinancialData(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
     
+    # Novo campo para indicar se é recorrente
+    is_recurring = models.BooleanField(default=False)
+    recurring_day = models.IntegerField(null=True, blank=True, help_text="Dia do mês para despesas recorrentes (1-31)")
+    
     class Meta:
         ordering = ['-date']
     
     def __str__(self):
-        return f"{self.user.username} - {self.description} - R$ {self.amount}"
+        recurrente = " 🔄" if self.is_recurring else ""
+        return f"{self.user.username} - {self.description} - R$ {self.amount}{recurrente}"
 
 class DashboardConfig(models.Model):
     user = models.OneToOneField(User, on_delete=models.CASCADE)
