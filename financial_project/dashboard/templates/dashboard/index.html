@@ -1,0 +1,166 @@
+{% extends 'dashboard/base.html' %}
+
+{% block title %}Financial Dashboard - WealthSecure{% endblock %}
+
+{% block content %}
+<!-- Dashboard Cards -->
+<div class="dashboard-cards">
+    <div class="card">
+        <div class="card-header">
+            <div class="card-title">PORTFOLIO VALUE</div>
+            <i class="fas fa-info-circle"></i>
+        </div>
+        <div class="card-value">${{ portfolio.total_value|floatformat:2 }}</div>
+        <div class="card-change positive">
+            <i class="fas fa-arrow-up"></i>
+            +{{ portfolio.change_percentage }}% (${{ portfolio.change_amount|floatformat:2 }})
+        </div>
+    </div>
+
+    <div class="card">
+        <div class="card-header">
+            <div class="card-title">CASH BALANCE</div>
+            <i class="fas fa-info-circle"></i>
+        </div>
+        <div class="card-value">${{ portfolio.cash_balance|floatformat:2 }}</div>
+        <div class="card-change">
+            Available for investment
+        </div>
+    </div>
+
+    <div class="card">
+        <div class="card-header">
+            <div class="card-title">INVESTMENT YIELD</div>
+            <i class="fas fa-info-circle"></i>
+        </div>
+        <div class="card-value">{{ portfolio.investment_yield }}%</div>
+        <div class="card-change positive">
+            <i class="fas fa-arrow-up"></i>
+            +0.42% from last month
+        </div>
+    </div>
+</div>
+
+<!-- Charts -->
+<div class="charts">
+    <div class="chart-container">
+        <div class="chart-title">Portfolio Performance</div>
+        <canvas id="performanceChart"></canvas>
+    </div>
+
+    <div class="chart-container">
+        <div class="chart-title">Asset Allocation</div>
+        <canvas id="allocationChart"></canvas>
+    </div>
+</div>
+
+<!-- Transactions -->
+<div class="transactions">
+    <div class="chart-title">Recent Transactions</div>
+    <table class="transaction-table">
+        <thead>
+            <tr>
+                <th>Transaction</th>
+                <th>Date</th>
+                <th>Amount</th>
+                <th>Status</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for transaction in transactions %}
+            <tr>
+                <td>
+                    <div class="transaction-name">
+                        <div class="transaction-icon">
+                            <i class="{{ transaction.icon_class }}" style="color: {{ transaction.icon_color }};"></i>
+                        </div>
+                        <div>
+                            <div>{{ transaction.asset_name }}</div>
+                            <div style="color: #7f8c8d; font-size: 14px;">{{ transaction.asset_symbol }}</div>
+                        </div>
+                    </div>
+                </td>
+                <td>{{ transaction.date }}</td>
+                <td class="transaction-amount {% if transaction.amount > 0 %}positive-amount{% else %}negative-amount{% endif %}">
+                    {% if transaction.amount > 0 %}+{% endif %}${{ transaction.amount|floatformat:2 }}
+                </td>
+                <td>
+                    <span style="color: 
+                        {% if transaction.status == 'Completed' %}#4cd964
+                        {% elif transaction.status == 'Pending' %}#ff9500
+                        {% else %}#ff3b30
+                        {% endif %};">
+                        {{ transaction.status }}
+                    </span>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    // Performance Chart
+    const performanceData = {{ performance_data|safe }};
+    const perfChart = document.getElementById('performanceChart');
+    new Chart(perfChart, {
+        type: 'line',
+        data: {
+            labels: performanceData.labels,
+            datasets: [{
+                label: 'Portfolio Value',
+                data: performanceData.data,
+                borderColor: '#4cd964',
+                tension: 0.3,
+                fill: true,
+                backgroundColor: 'rgba(76, 217, 100, 0.1)'
+            }]
+        },
+        options: {
+            responsive: true,
+            plugins: {
+                legend: {
+                    display: false
+                }
+            },
+            scales: {
+                y: {
+                    beginAtZero: false,
+                    grid: {
+                        drawBorder: false
+                    }
+                },
+                x: {
+                    grid: {
+                        display: false
+                    }
+                }
+            }
+        }
+    });
+
+    // Allocation Chart
+    const allocationData = {{ allocation_data|safe }};
+    const allocChart = document.getElementById('allocationChart');
+    new Chart(allocChart, {
+        type: 'doughnut',
+        data: {
+            labels: allocationData.map(item => item.category),
+            datasets: [{
+                data: allocationData.map(item => item.percentage),
+                backgroundColor: allocationData.map(item => item.color)
+            }]
+        },
+        options: {
+            responsive: true,
+            plugins: {
+                legend: {
+                    position: 'bottom'
+                }
+            }
+        }
+    });
+</script>
+{% endblock %}
