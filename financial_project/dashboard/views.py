@@ -8,6 +8,8 @@ from django.utils import timezone
 from datetime import datetime, timedelta
 from .models import FinancialData, DashboardConfig
 from django.contrib.auth.models import User
+from django.core.paginator import Paginator, EmptyPage, PageNotAnInteger
+
 
 @login_required
 def dashboard(request):
@@ -26,13 +28,38 @@ def dashboard(request):
     else:
         start_date = today - timedelta(days=30)
     
-    # Dados do usuário logado
+    # Dados do usuário logado - último mês para as transações
+    last_month_start = today.replace(day=1)
+    # Se hoje for o primeiro dia do mês, pegue o mês anterior
+    if today.day == 1:
+        if today.month == 1:
+            last_month_start = today.replace(year=today.year-1, month=12, day=1)
+        else:
+            last_month_start = today.replace(month=today.month-1, day=1)
+    
+    # Transações do último mês (para paginação)
+    last_month_transactions = FinancialData.objects.filter(
+        user=user, 
+        date__gte=last_month_start
+    ).order_by('-date')
+    
+    # Paginação
+    page = request.GET.get('page', 1)
+    paginator = Paginator(last_month_transactions, 10)  # 10 itens por página
+    
+    try:
+        latest_transactions = paginator.page(page)
+    except PageNotAnInteger:
+        latest_transactions = paginator.page(1)
+    except EmptyPage:
+        latest_transactions = paginator.page(paginator.num_pages)
+    
+    # Estatísticas (usando o filtro selecionado pelo usuário)
     user_data = FinancialData.objects.filter(
         user=user, 
         date__gte=start_date
     )
     
-    # Estatísticas
     total_receita = user_data.filter(category='receita').aggregate(Sum('amount'))['amount__sum'] or 0
     total_despesa = user_data.filter(category='despesa').aggregate(Sum('amount'))['amount__sum'] or 0
     total_investimento = user_data.filter(category='investimento').aggregate(Sum('amount'))['amount__sum'] or 0
@@ -45,9 +72,6 @@ def dashboard(request):
         'Investimento': float(total_investimento),
     }
     
-    # Últimas transações
-    latest_transactions = user_data.order_by('-date')[:10]
-    
     context = {
         'user_data': user_data,
         'total_receita': total_receita,
@@ -57,6 +81,7 @@ def dashboard(request):
         'categories_data': categories_data,
         'latest_transactions': latest_transactions,
         'date_filter': date_filter,
+        'last_month_start': last_month_start,
     }
     
     return render(request, 'dashboard/dashboard.html', context)
